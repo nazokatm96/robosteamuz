@@ -260,23 +260,113 @@
   </section>
 </main>
 
-<footer>
-  <div class="wrap">
-    <div class="big">Robo<br>STEAM</div>
-    <nav>
-      <span>Bepul robototexnika akademiyasi, Toshkent</span>
-      <!-- TODO: real Telegram and Instagram links -->
-      <a href="#">Telegram</a>
-      <a href="#">Instagram</a>
-      <span>Universitet loyihasi sifatida yaratilgan</span>
+<footer class="site-foot">
+  <!-- Footer icons: 24px stroke icons, drawn in currentColor -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <symbol id="fi-home" viewBox="0 0 24 24"><path d="M3 11l9-7 9 7M5 10v10h5v-6h4v6h5V10"/></symbol>
+      <symbol id="fi-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></symbol>
+      <symbol id="fi-cap" viewBox="0 0 24 24"><path d="M2 9l10-5 10 5-10 5zM6 11v5c3 2.5 9 2.5 12 0v-5M22 9v6"/></symbol>
+      <symbol id="fi-book" viewBox="0 0 24 24"><path d="M4 5a2 2 0 0 1 2-2h14v15H6a2 2 0 0 0-2 2zM4 20a2 2 0 0 0 2 2h14v-4"/></symbol>
+      <symbol id="fi-play" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="4"/><path d="M10 9l5 3-5 3z"/></symbol>
+      <symbol id="fi-tool" viewBox="0 0 24 24"><path d="M14.5 6.5a4 4 0 0 0 5 5l-9 9a2.1 2.1 0 0 1-3-3l9-9a4 4 0 0 1 5-5l-2.5 2.5.5 2 2 .5z"/></symbol>
+      <symbol id="fi-tg" viewBox="0 0 24 24"><path d="M21 4L3 11l6 2 2 6 3-4 5 4zM9 13l9-7"/></symbol>
+      <symbol id="fi-ig" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><path d="M17.5 6.5v.01"/></symbol>
+      <symbol id="fi-yt" viewBox="0 0 24 24"><path d="M2.5 12c0-3 .3-5 1.3-5.7C5 5.4 8 5 12 5s7 .4 8.2 1.3c1 .7 1.3 2.7 1.3 5.7s-.3 5-1.3 5.7C19 18.6 16 19 12 19s-7-.4-8.2-1.3c-1-.7-1.3-2.7-1.3-5.7z"/><path d="M10 9l5 3-5 3z"/></symbol>
+      <symbol id="fi-phone" viewBox="0 0 24 24"><path d="M5 3h4l2 5-2.5 1.5a11 11 0 0 0 6 6L16 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 5a2 2 0 0 1 2-2"/></symbol>
+      <symbol id="fi-mail" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M3 7l9 6 9-6"/></symbol>
+      <symbol id="fi-pin" viewBox="0 0 24 24"><path d="M12 22s7-6.5 7-12a7 7 0 0 0-14 0c0 5.5 7 12 7 12z"/><circle cx="12" cy="10" r="2.5"/></symbol>
+      <symbol id="fi-survey" viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V2.5h6V4M8.5 11l1.5 1.5 3-3M8.5 16.5h7"/></symbol>
+      <symbol id="fi-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+      <symbol id="fi-headset" viewBox="0 0 24 24"><path d="M4 14v-2a8 8 0 0 1 16 0v2"/><rect x="3" y="13" width="4" height="6" rx="1.5"/><rect x="17" y="13" width="4" height="6" rx="1.5"/><path d="M19 19c0 1.5-2 2.5-5 2.5h-1"/></symbol>
+      <symbol id="fi-up" viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7"/></symbol>
+    </defs>
+  </svg>
+
+  <div class="wrap foot-grid">
+    <div class="foot-col foot-brand">
+      <a class="logo" href="#top">Robo<b>STEAM</b></a>
+      <p class="foot-tagline">Bepul onlayn robototexnika akademiyasi, Toshkent</p>
+      <!-- Same wording as the hero lead -->
+      <p>Bepul video darslar va amaliy mashqlar. Hech qanday tajriba shart emas, noldan boshlaymiz.</p>
+      <p class="foot-note">Universitet loyihasi sifatida yaratilgan</p>
+      <a class="foot-survey" href="survey.html"><svg aria-hidden="true"><use href="#fi-survey"/></svg>So'rovnomalarga o'tish<svg aria-hidden="true"><use href="#fi-arrow"/></svg></a>
+    </div>
+
+    <nav class="foot-col is-yellow" aria-labelledby="foot-links">
+      <h2 id="foot-links">Tezkor havolalar</h2>
+      <!-- Yangiliklar, Galereya and FAQ are left out until those pages exist -->
+      <ul class="foot-list">
+        <li><a href="#top"><svg aria-hidden="true"><use href="#fi-home"/></svg>Bosh sahifa</a></li>
+        <li><a href="#about"><svg aria-hidden="true"><use href="#fi-info"/></svg>Biz haqimizda</a></li>
+        <li><a href="academy.html"><svg aria-hidden="true"><use href="#fi-cap"/></svg>Kurslar</a></li>
+      </ul>
     </nav>
+
+    <nav class="foot-col is-mint" aria-labelledby="foot-res">
+      <h2 id="foot-res">Foydali resurslar</h2>
+      <!-- Sertifikatlar and Hamkorlar are left out until those pages exist -->
+      <ul class="foot-list">
+        <li><a href="academy.html"><svg aria-hidden="true"><use href="#fi-book"/></svg>O'quv materiallari</a></li>
+        <li><a href="academy.html"><svg aria-hidden="true"><use href="#fi-play"/></svg>Video darsliklar</a></li>
+        <li><a href="#build"><svg aria-hidden="true"><use href="#fi-tool"/></svg>Amaliy loyihalar</a></li>
+      </ul>
+    </nav>
+
+    <div class="foot-col is-coral" id="contact">
+      <h2>Biz bilan bog'laning</h2>
+      <!-- TODO: no real accounts or contact details yet. When they exist, turn each row into a link
+           (https://t.me/..., https://instagram.com/..., https://youtube.com/@...),
+           put the handle/number in .foot-val and drop the "Tez orada" text. -->
+      <ul class="foot-list foot-contact">
+        <li><span class="foot-row"><svg aria-hidden="true"><use href="#fi-tg"/></svg><span>Telegram<span class="foot-val">Tez orada</span></span></span></li>
+        <li><span class="foot-row"><svg aria-hidden="true"><use href="#fi-ig"/></svg><span>Instagram<span class="foot-val">Tez orada</span></span></span></li>
+        <li><span class="foot-row"><svg aria-hidden="true"><use href="#fi-yt"/></svg><span>YouTube<span class="foot-val">Tez orada</span></span></span></li>
+      </ul>
+    </div>
+
+    <div class="foot-cta">
+      <span class="tag">Savollaringiz bormi?</span>
+      <!-- The image's bottom is a hard cut: it sits flush on the frame's bottom edge, as if peeking up from behind it -->
+      <div class="peek">
+        <picture>
+          <source type="image/webp" srcset="public/images/astronaut-wave-340.webp 340w, public/images/astronaut-wave-520.webp 520w" sizes="(max-width: 760px) 170px, 220px">
+          <img src="public/images/astronaut-wave.png" width="520" height="388" alt="Xayrlashib qo'l silkitayotgan kosmonavt" loading="lazy" decoding="async">
+        </picture>
+      </div>
+      <!-- TODO: point this at the Telegram link once it exists -->
+      <a class="foot-help" href="#contact"><svg aria-hidden="true"><use href="#fi-headset"/></svg>Biz har doim yordam berishga tayyormiz!</a>
+    </div>
   </div>
-  <!-- The image's bottom is a hard cut: it sits flush on the footer's bottom edge, as if peeking up from behind it -->
-  <div class="peek">
-    <picture>
-      <source type="image/webp" srcset="public/images/astronaut-wave-340.webp 340w, public/images/astronaut-wave-520.webp 520w" sizes="(max-width: 760px) 170px, 260px">
-      <img src="public/images/astronaut-wave.png" width="520" height="388" alt="Xayrlashib qo'l silkitayotgan kosmonavt" loading="lazy" decoding="async">
-    </picture>
+
+  <section class="wrap foot-info" aria-labelledby="foot-info">
+    <h2 id="foot-info">Aloqa ma'lumotlari</h2>
+    <!-- TODO: no real phone, email or address yet. When they exist, make the phone/email cards tel:/mailto: links and replace the values. -->
+    <ul>
+      <li class="info-card"><svg aria-hidden="true"><use href="#fi-phone"/></svg><span>Telefon<span class="foot-val">Tez orada</span></span></li>
+      <li class="info-card"><svg aria-hidden="true"><use href="#fi-mail"/></svg><span>Email<span class="foot-val">Tez orada</span></span></li>
+      <!-- TODO: placeholder address, only the city is known -->
+      <li class="info-card"><svg aria-hidden="true"><use href="#fi-pin"/></svg><span>Manzil<span class="foot-val">Toshkent (aniq manzil tez orada)</span></span></li>
+    </ul>
+  </section>
+
+  <div class="foot-bar">
+    <div class="wrap">
+      <div class="foot-mark">
+        <svg class="foot-gear" aria-hidden="true"><use href="#gear"/></svg>
+        <span><b>RoboSTEAM</b>Bepul robototexnika akademiyasi</span>
+      </div>
+      <div class="foot-copy">
+        <p class="foot-quote">«Bepul ko'ring. Mashq qiling. Robot yasang.»</p>
+        <p>© <span data-year>2026</span> RoboSTEAM. Barcha huquqlar himoyalangan.</p>
+      </div>
+      <div class="foot-legal">
+        <!-- TODO: no terms/privacy pages yet; link them here once written -->
+        <span>Foydalanish shartlari <span class="soon">Tez orada</span></span>
+        <span>Maxfiylik siyosati <span class="soon">Tez orada</span></span>
+        <a class="btn foot-top" href="#top" aria-label="Sahifa boshiga qaytish"><svg aria-hidden="true"><use href="#fi-up"/></svg></a>
+      </div>
+    </div>
   </div>
 </footer>
 

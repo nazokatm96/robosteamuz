@@ -11,6 +11,9 @@
     setTimeout(function () { location.href = url; }, motion ? 450 : 0);
   });
 
+  // Footer copyright year (the HTML holds a fallback)
+  document.querySelectorAll('[data-year]').forEach(function (el) { el.textContent = new Date().getFullYear(); });
+
   var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   if (reduce || !window.gsap || !window.ScrollTrigger) {
     if (window.Mascot) Mascot.init({ reduce: reduce });

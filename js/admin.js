@@ -82,11 +82,20 @@
     pwUser: '{n} ({e}) uchun yangi parol.',
     passwordSet: "{n} uchun yangi parol saqlandi. Uni foydalanuvchiga xavfsiz yo'l bilan yetkazing.",
     emailConfirmed: '{n} emaili tasdiqlandi, endi u tizimga kira oladi.',
-    fnUnavailable: "admin-users server funksiyasi javob bermadi. U Supabase'da o'rnatilganini tekshiring (supabase/functions/admin-users).",
+    deleteUser: "O'chirish",
+    deleteUserFor: "{n}: hisobni o'chirish",
+    confirmDeleteUser: "{n} ({e}) hisobi, profili va barcha natijalari butunlay o'chiriladi. Buni qaytarib bo'lmaydi. Davom etasizmi?",
+    userDeleted: "{n} hisobi o'chirildi.",
+    cantDeleteSelf: "O'z hisobingizni bu yerdan o'chirib bo'lmaydi.",
+    fnUnavailable:"admin-users server funksiyasi javob bermadi. U Supabase'da o'rnatilganini tekshiring (supabase/functions/admin-users).",
     forbidden: 'Bu amal faqat adminlar uchun.',
     // survey
     surveyCount: '{n} ta javob',
     noSurvey: "Hali javob yo'q.",
+    deleteResponse: "Javobni o'chirish",
+    deleteResponseFor: "{n}: javobni o'chirish",
+    confirmDeleteResponse: "{n} ({p}) javobi butunlay o'chiriladi. Davom etasizmi?",
+    responseDeleted: "{n} javobi o'chirildi.",
     roles: { student: "O'quvchi", teacher: "O'qituvchi" },
     csvName: 'sorovnoma-{d}.csv',
     csvCols: ['Sana', 'Rol', 'Ism', 'Telefon', 'Yosh', 'Viloyat'],
@@ -108,7 +117,7 @@
   };
 
   var content = { modules: [], lessons: [], quizCounts: {} };
-  var users = null, survey = null;
+  var users = null, survey = null, me = null; // me: the signed-in admin's user id
   var busy = false; // one content change at a time (reorders, deletes)
 
   // ---------- helpers ----------
@@ -785,6 +794,7 @@
         el('td', { class: 'adm-td-acts' }, [
           el('button', { class: 'btn ghost sm', type: 'button', 'data-set-pw': u.id, 'aria-label': fmt(T.setPasswordFor, { n: name }), text: T.setPassword }),
           u.email_confirmed ? null : el('button', { class: 'btn sm', type: 'button', 'data-confirm-email': u.id, 'aria-label': fmt(T.confirmEmailFor, { n: name }), text: T.confirmEmail }),
+          u.id === me ? null : el('button', { class: 'btn ghost sm is-danger', type: 'button', 'data-delete-user': u.id, 'aria-label': fmt(T.deleteUserFor, { n: name }), text: T.deleteUser }),
         ]),
       ]));
     });
@@ -805,6 +815,7 @@
     try { code = (await res.error.context.json()).error || ''; } catch (e) { /* not JSON */ }
     console.warn('[admin] admin-users', res.error, status, code);
     if (code === 'weak_password') return { error: A.T.weakPassword, field: true };
+    if (code === 'cannot_delete_self') return { error: T.cantDeleteSelf };
     if (status === 401 || status === 403) return { error: T.forbidden };
     if (res.error.name === 'FunctionsFetchError' || res.error.name === 'FunctionsRelayError' || status === 404) return { error: T.fnUnavailable };
     return { error: A.mapError({ code: code, status: status, message: code }) };
@@ -824,7 +835,23 @@
       openDialog(pwDialog);
     } else if ((id = b.getAttribute('data-confirm-email'))) {
       confirmEmail(userById(id), b);
+    } else if ((id = b.getAttribute('data-delete-user'))) {
+      deleteUser(userById(id), b);
     }
+  }
+
+  async function deleteUser(u, btn) {
+    var name = userName(u);
+    if (!window.confirm(fmt(T.confirmDeleteUser, { n: name, e: u.email || T.dash }))) return;
+    A.setBusy(btn, true);
+    usersSay('');
+    var r = await adminUsers({ action: 'delete_user', user_id: u.id });
+    A.setBusy(btn, false);
+    if (r.error) { usersSay(r.error, 'error'); return; }
+    users = users.filter(function (x) { return x !== u; });
+    renderUsers();
+    usersSay(fmt(T.userDeleted, { n: name }), 'ok');
+    $('#user-search').focus();
   }
 
   async function confirmEmail(u, btn) {
@@ -946,9 +973,35 @@
             el('span', { class: 'adm-resp-date', text: formatDate(r.created_at, true) }),
           ]),
           dl,
+          el('div', { class: 'adm-resp-foot' }, [
+            el('button', { class: 'btn ghost sm is-danger', type: 'button', 'data-delete-response': r.id, 'aria-label': fmt(T.deleteResponseFor, { n: r.name }), text: T.deleteResponse }),
+          ]),
         ]),
       ]));
     });
+  }
+
+  async function deleteResponse(e) {
+    var btn = e.target.closest('[data-delete-response]');
+    if (!btn || btn.disabled) return;
+    var id = btn.getAttribute('data-delete-response'), r = survey.filter(function (x) { return x.id === id; })[0];
+    if (!r || !window.confirm(fmt(T.confirmDeleteResponse, { n: r.name, p: r.phone }))) return;
+    var rows = filteredSurvey(), next = rows[rows.indexOf(r) + 1] || rows[rows.indexOf(r) - 1];
+    A.setBusy(btn, true);
+    surveySay('');
+    try {
+      check(await sb.rpc('admin_delete_survey_response', { p_id: id }));
+      survey = survey.filter(function (x) { return x !== r; });
+      renderSurvey();
+      surveySay(fmt(T.responseDeleted, { n: r.name }), 'ok');
+      // keep the keyboard position: the neighbouring answer, or the filter when the list is empty
+      var target = next && $('[data-delete-response="' + next.id + '"]');
+      (target ? target.closest('details').querySelector('summary') : $('#survey-role')).focus();
+    } catch (err) {
+      console.warn('[admin] delete response', err);
+      surveySay(A.mapError(err), 'error');
+      A.setBusy(btn, false);
+    }
   }
 
   // CSV for Excel: UTF-8 with BOM and ";" separators (what Excel expects with Uzbek / Russian regional settings).
@@ -1039,6 +1092,7 @@
     $('[data-users]').addEventListener('click', usersClicks);
     $('#user-search').addEventListener('input', renderUsers);
     $('#survey-role').addEventListener('change', renderSurvey);
+    $('[data-survey]').addEventListener('click', deleteResponse);
     $('[data-csv]').addEventListener('click', downloadCsv);
     $$('[data-reload]').forEach(function (b) {
       b.addEventListener('click', function () { b.getAttribute('data-reload') === 'users' ? loadUsers() : loadSurvey(); });
@@ -1052,6 +1106,7 @@
   sb.auth.getSession().then(function (res) {
     var session = res && res.data ? res.data.session : null;
     if (!session) return; // js/app.js redirects to login.html
+    me = session.user.id;
     start();
   }, function (err) {
     console.warn('[admin]', err);

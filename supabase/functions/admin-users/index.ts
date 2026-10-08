@@ -1,6 +1,8 @@
 // RoboSTEAM admin-users Edge Function: account actions that need the service role, for admins only (admin.html).
 //   POST { action: 'set_password',  user_id, password }  -> { ok: true }
 //   POST { action: 'confirm_email', user_id }            -> { ok: true }
+//   POST { action: 'delete_user',   user_id }            -> { ok: true }  (not yourself; profile, progress and quiz
+//                                                           results go with the account: on delete cascade)
 // The caller is identified by their own access token (Authorization: Bearer ...) and must be in public.admins
 // (supabase/admin-schema.sql). The service role key is provided by Supabase as an env var and never leaves this function.
 //
@@ -41,6 +43,14 @@ Deno.serve(async (req) => {
   let body: { action?: string; user_id?: string; password?: string };
   try { body = await req.json(); } catch { return json({ error: 'bad_request' }, 400); }
   if (typeof body.user_id !== 'string' || !UUID.test(body.user_id)) return json({ error: 'bad_request' }, 400);
+
+  if (body.action === 'delete_user') {
+    // an admin can't delete their own account here, so the last admin can't lock everyone out by accident
+    if (body.user_id === auth.user.id) return json({ error: 'cannot_delete_self' }, 400);
+    const { error } = await admin.auth.admin.deleteUser(body.user_id);
+    if (error) return json({ error: error.code || 'delete_failed' }, error.status && error.status < 500 ? error.status : 500);
+    return json({ ok: true });
+  }
 
   let attrs: { password?: string; email_confirm?: boolean };
   if (body.action === 'set_password') {

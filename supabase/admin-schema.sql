@@ -245,5 +245,24 @@ $$;
 revoke execute on function public.admin_survey_responses() from public, anon;
 grant execute on function public.admin_survey_responses() to authenticated;
 
+-- Delete one answer (spam, test entries, someone asking to be removed). Returns false if it was already gone.
+create or replace function public.admin_delete_survey_response(p_id uuid)
+returns boolean
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if not public.is_admin() then
+    raise exception 'admins only' using errcode = '42501';
+  end if;
+  delete from public.survey_responses where id = p_id;
+  return found;
+end;
+$$;
+
+revoke execute on function public.admin_delete_survey_response(uuid) from public, anon;
+grant execute on function public.admin_delete_survey_response(uuid) to authenticated;
+
 -- 7. Check: every table in public must have RLS on. This should return no rows.
 -- select tablename from pg_tables where schemaname = 'public' and not rowsecurity;

@@ -973,6 +973,7 @@ a.proj-card:active { transform: translate(3px, 3px); box-shadow: 2px 2px 0 var(-
 .adm-answers { margin: 0; padding: 4px 18px 18px; display: grid; gap: 4px; }
 .adm-answers dt { margin-top: 10px; font-size: .9rem; font-weight: 700; opacity: .8; }
 .adm-answers dd { margin: 0; }
+.adm-resp-foot { padding: 0 18px 18px; }
 
 /* Dialogs */
 .adm-dialog { width: min(560px, 100% - 24px); max-width: none; max-height: calc(100dvh - 24px); padding: 0; border: var(--line); border-radius: 28px; background: var(--card); color: var(--ink); box-shadow: var(--pop); overflow: auto; overscroll-behavior: contain; }

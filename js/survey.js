@@ -157,6 +157,10 @@
         choiceItem(role, { id: 'age_range', type: 'single', text: 'Sizning yoshingiz', options: S.AGE_RANGES, grid: true }),
         choiceItem(role, { id: 'region', type: 'single', text: 'Yashash manzilingiz', options: S.REGIONS, grid: true }),
       ] });
+    } else {
+      steps.push({ title: "Siz haqingizda", items: [
+        choiceItem(role, { id: 'age_range', type: 'single', text: 'Sizning yoshingiz', options: S.TEACHER_AGE_RANGES, grid: true }),
+      ] });
     }
     steps.push({ title: 'Savollar: 1–5', items: qs.slice(0, 5).map(function (q, i) { return choiceItem(role, q, i + 1); }) });
     steps.push({ title: 'Savollar: 6–10', items: qs.slice(5).map(function (q, i) { return choiceItem(role, q, i + 6); }) });

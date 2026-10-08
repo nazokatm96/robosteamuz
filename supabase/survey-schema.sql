@@ -29,10 +29,11 @@ alter table public.survey_responses drop constraint if exists survey_phone_check
 alter table public.survey_responses add constraint survey_phone_check
   check (btrim(phone) <> '' and phone ~ '^\+[1-9][0-9]{7,14}$');
 
--- Must match AGE_RANGES and REGIONS in js/survey-questions.js
+-- Must match AGE_RANGES, TEACHER_AGE_RANGES and REGIONS in js/survey-questions.js
 alter table public.survey_responses drop constraint if exists survey_age_range_check;
 alter table public.survey_responses add constraint survey_age_range_check
-  check (age_range is null or age_range in ('7-9 yosh', '10-12 yosh', '13-15 yosh', '16-18 yosh'));
+  check (age_range is null or age_range in ('7-9 yosh', '10-12 yosh', '13-15 yosh', '16-18 yosh',
+                                            '20-29 yosh', '30-39 yosh', '40-49 yosh', '50+ yosh'));
 
 alter table public.survey_responses drop constraint if exists survey_region_check;
 alter table public.survey_responses add constraint survey_region_check
@@ -40,11 +41,13 @@ alter table public.survey_responses add constraint survey_region_check
     'Andijon viloyati', 'Buxoro viloyati', 'Farg''ona viloyati', 'Jizzax viloyati', 'Namangan viloyati', 'Qashqadaryo viloyati',
     'Samarqand viloyati', 'Sirdaryo viloyati', 'Surxondaryo viloyati', 'Toshkent shahar', 'Toshkent viloyati', 'Xorazm viloyati'));
 
--- Students give age and region; teachers do not
+-- Students give a student age range and region; teachers give a teacher age range and no region.
+-- Teacher age may be null: responses sent before the teacher age step was added have none.
 alter table public.survey_responses drop constraint if exists survey_role_fields_check;
 alter table public.survey_responses add constraint survey_role_fields_check
-  check ((role = 'student' and age_range is not null and region is not null)
-      or (role = 'teacher' and age_range is null and region is null));
+  check ((role = 'student' and age_range in ('7-9 yosh', '10-12 yosh', '13-15 yosh', '16-18 yosh') and region is not null)
+      or (role = 'teacher' and (age_range is null or age_range in ('20-29 yosh', '30-39 yosh', '40-49 yosh', '50+ yosh'))
+          and region is null));
 
 -- answers must be a JSON object of a sane size (stops junk/oversized payloads from the public endpoint)
 alter table public.survey_responses drop constraint if exists survey_answers_check;

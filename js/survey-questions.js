@@ -13,9 +13,10 @@
 //   extra    optional text field under the options: { key, label, required, when }
 //            with `when`, the field only appears (and is only required) when that option is selected
 //
-// AGE_RANGES and REGIONS must match the check constraints in supabase/survey-schema.sql.
+// AGE_RANGES, TEACHER_AGE_RANGES and REGIONS must match the check constraints in supabase/survey-schema.sql.
 window.SURVEY = {
   AGE_RANGES: ['7-9 yosh', '10-12 yosh', '13-15 yosh', '16-18 yosh'],
+  TEACHER_AGE_RANGES: ['20-29 yosh', '30-39 yosh', '40-49 yosh', '50+ yosh'],
   REGIONS: [
     'Andijon viloyati', 'Buxoro viloyati', "Farg'ona viloyati", 'Jizzax viloyati', 'Namangan viloyati', 'Qashqadaryo viloyati',
     'Samarqand viloyati', 'Sirdaryo viloyati', 'Surxondaryo viloyati', 'Toshkent shahar', 'Toshkent viloyati', 'Xorazm viloyati',

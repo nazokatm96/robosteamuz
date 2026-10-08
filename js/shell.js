@@ -1,7 +1,7 @@
 /* RoboSTEAM app shell: sidebar (desktop), top bar + bottom tab bar + "More" sheet (mobile), lesson drawer.
    Load it as the FIRST element inside <body data-page="..."> with a plain (non-deferred) <script> so the shell
    is in the DOM before the page content is parsed: no layout shift. Pages: dashboard | academy | progress |
-   simulator | profile | settings. js/app.js fills the user card; js/auth.js wires every [data-logout] button;
+   simulator | profile | settings | admin. js/app.js fills the user card and shows [data-admin-only] to admins; js/auth.js wires every [data-logout] button;
    js/academy.js renders the lesson tree into [data-modules]. Every user-facing string is in T. */
 (function () {
   'use strict';
@@ -27,6 +27,7 @@
       simulator: 'Simulyator',
       profile: 'Profil',
       settings: 'Sozlamalar',
+      admin: 'Boshqaruv',
     },
     tabs: { dashboard: 'Asosiy' }, // shorter labels for the bottom bar
   };
@@ -38,6 +39,7 @@
     simulator: '<rect x="6" y="6" width="12" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="2.4"/><path d="M9 2v4M15 2v4M9 18v4M15 18v4M2 9h4M2 15h4M18 9h4M18 15h4" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><circle cx="12" cy="12" r="2" fill="currentColor"/>',
     profile: '<circle cx="12" cy="8" r="4" fill="none" stroke="currentColor" stroke-width="2.4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>',
     settings: '<circle cx="12" cy="12" r="3.2" fill="none" stroke="currentColor" stroke-width="2.4"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>',
+    admin: '<path d="M12 2.5l8 3v6c0 5-3.4 8.6-8 10-4.6-1.4-8-5-8-10v-6z" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"/><path d="M8.5 12l2.5 2.5 4.5-5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>',
     more: '<circle cx="5" cy="12" r="2.2" fill="currentColor"/><circle cx="12" cy="12" r="2.2" fill="currentColor"/><circle cx="19" cy="12" r="2.2" fill="currentColor"/>',
     logout: '<path d="M14 4h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-4M10 8l-4 4 4 4M6 12h10" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>',
     collapse: '<path d="M15 6l-6 6 6 6" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>',
@@ -52,9 +54,10 @@
     { id: 'simulator', href: 'simulator.html' },
     { id: 'profile', href: 'profile.html' },
     { id: 'settings', href: 'settings.html' },
+    { id: 'admin', href: 'admin.html', admin: true },
   ];
   var TABS = ['dashboard', 'academy', 'progress', 'profile'];  // + "More"
-  var IN_MORE = { simulator: 1, settings: 1 };
+  var IN_MORE = { simulator: 1, settings: 1, admin: 1 };
   var STORE_KEY = 'robosteam.sidebar.collapsed';
   var DESKTOP = '(min-width: 1024px)';
 
@@ -73,6 +76,8 @@
   root.classList.toggle('side-collapsed', collapsed);
 
   function current(id) { return id === page ? ' aria-current="page"' : ''; }
+  // Admin links start hidden; js/app.js shows them once is_admin() says yes. On admin.html they show right away.
+  var adminOnly = page === 'admin' ? ' data-admin-only' : ' data-admin-only hidden';
   var userCard =
     '<span class="avatar" aria-hidden="true" data-shell-initials></span>' +
     '<span class="side-me-text side-label"><span class="side-me-name" data-shell-name>' + T.loading + '</span>' +
@@ -88,7 +93,7 @@
       '<nav class="side-nav" aria-label="' + T.menu + '"><ul>' +
         MENU.map(function (m) {
           var label = T.pages[m.id];
-          return '<li class="side-li' + (m.id === 'academy' && hasTree ? ' has-tree' : '') + '">' +
+          return '<li class="side-li' + (m.id === 'academy' && hasTree ? ' has-tree' : '') + '"' + (m.admin ? adminOnly : '') + '>' +
             '<a class="side-item" href="' + m.href + '"' + current(m.id) + ' title="' + label + '">' + svg(m.id) +
             '<span class="side-label">' + label + (m.soon ? ' <span class="soon">' + T.soon + '</span>' : '') + '</span></a>' +
             (m.id === 'academy' && hasTree ? '<div class="tree-slot" data-tree-side></div>' : '') +
@@ -125,6 +130,7 @@
       '<ul class="sheet-list">' +
         '<li><a class="sheet-item" href="simulator.html"' + current('simulator') + '>' + svg('simulator') + '<span>' + T.pages.simulator + '</span></a></li>' +
         '<li><a class="sheet-item" href="settings.html"' + current('settings') + '>' + svg('settings') + '<span>' + T.pages.settings + '</span></a></li>' +
+        '<li' + adminOnly + '><a class="sheet-item" href="admin.html"' + current('admin') + '>' + svg('admin') + '<span>' + T.pages.admin + '</span></a></li>' +
         '<li><button class="sheet-item is-danger" type="button" data-logout>' + svg('logout') + '<span>' + T.logout + '</span></button></li>' +
       '</ul>' +
     '</div>';

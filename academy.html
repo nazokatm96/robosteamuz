@@ -68,6 +68,20 @@
 
       <div class="lesson-body" data-body></div>
 
+      <!-- Lesson quiz (js/academy.js renderQuiz); hidden when the lesson has no questions -->
+      <section class="quiz" data-quiz aria-labelledby="quiz-h" hidden>
+        <h2 class="quiz-h" id="quiz-h">Test</h2>
+        <p class="quiz-sub">Darsni qanchalik tushunganingizni tekshiring.</p>
+        <form data-quiz-form novalidate>
+          <ol class="quiz-list" data-quiz-list></ol>
+          <p class="form-msg" data-quiz-msg hidden></p>
+          <div class="quiz-actions">
+            <button class="btn" type="submit" data-quiz-submit>Javoblarni tekshirish</button>
+            <button class="btn ghost" type="button" data-quiz-retry hidden>Qayta yechish</button>
+          </div>
+        </form>
+      </section>
+
       <div class="lesson-actions">
         <button class="btn blue" type="button" data-complete>Tugatildi deb belgilash</button>
         <p class="form-msg" data-complete-msg role="alert" hidden></p>

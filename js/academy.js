@@ -41,6 +41,14 @@
     statLessons: '{d} / {t}',
     statModules: '{d} / {t}',
     statsEmpty: "Hali birorta dars tugatilmagan. Birinchi darsdan boshlang, natijalar shu yerda ko'rinadi!",
+    // lesson quiz
+    questionN: '{n}-savol',
+    quizAnswerAll: 'Avval barcha savollarga javob bering.',
+    quizScore: "{s} / {t} ta to'g'ri javob.",
+    quizPerfect: "Barakalla! Hamma javoblar to'g'ri.",
+    quizError: "Javoblarni tekshirib bo'lmadi. Qayta urinib ko'ring.",
+    right: "to'g'ri javob",
+    wrong: "noto'g'ri",
   };
 
   var sb = window.sb || null;
@@ -136,17 +144,16 @@
   }
 
   // ---------- video ----------
-  // TODO(video): wire this to Supabase Storage. Return the signed URL once lesson videos are uploaded, e.g.
-  //   return lesson.videoPath ? createSignedVideoUrl(lesson.videoPath) : null;
-  // Needs the storage.objects SELECT policy described in supabase/academy-schema.sql (section 5).
+  // Videos are uploaded from admin.html into the private lesson-videos bucket; lessons.video_path is the object path.
+  // Reading needs the storage policy in supabase/admin-schema.sql (section 3).
   async function getVideoUrl(lesson) {
-    return null;
+    return lesson.videoPath ? createSignedVideoUrl(lesson.videoPath) : null;
   }
 
-  // Example for later (not called yet): a temporary link to a file in the private lesson-videos bucket.
-  // expiresInSeconds should outlast one viewing; the link stops working after that and is fetched again on the next visit.
+  // A temporary link to a file in the private lesson-videos bucket. expiresInSeconds should outlast one viewing
+  // (pauses included); the link stops working after that and is fetched again on the next visit.
   async function createSignedVideoUrl(path, expiresInSeconds) {
-    var res = await sb.storage.from('lesson-videos').createSignedUrl(path, expiresInSeconds || 60 * 60);
+    var res = await sb.storage.from('lesson-videos').createSignedUrl(path, expiresInSeconds || 6 * 60 * 60);
     if (res.error) { console.warn('[academy] signed url', res.error); return null; }
     return res.data.signedUrl;
   }
@@ -280,6 +287,7 @@
     title.textContent = l.title;
     if (focus) title.focus();
     renderBody($('[data-body]'), l.body);
+    renderQuiz(l);
     say('');
 
     // Video: the <video> shows the placeholder poster and the overlay until getVideoUrl returns a URL.
@@ -365,8 +373,118 @@
     }
   }
 
+  // ---------- lesson quiz: questions come without answers; the database checks them (supabase/admin-schema.sql) ----------
+  var quiz = null, quizToken = 0; // quiz = { lessonId, questions: [{ id, prompt, options }] }
+
+  async function renderQuiz(lesson) {
+    var box = $('[data-quiz]'), token = ++quizToken;
+    box.hidden = true;
+    quiz = null;
+    try {
+      var res = await sb.rpc('quiz_for_lesson', { p_lesson_id: lesson.id });
+      if (res.error) throw res.error;
+      if (token !== quizToken || !res.data || !res.data.length) return;
+      quiz = { lessonId: lesson.id, questions: res.data };
+      drawQuiz();
+      box.hidden = false;
+    } catch (err) {
+      console.warn('[academy] quiz', err); // no quiz is shown; the lesson itself still works
+    }
+  }
+
+  function drawQuiz() {
+    var list = $('[data-quiz-list]');
+    list.textContent = '';
+    quiz.questions.forEach(function (q, i) {
+      var fs = el('fieldset', { class: 'quiz-q', 'data-q': q.id }, [
+        el('legend', null, [el('span', { class: 'quiz-n', text: fmt(T.questionN, { n: i + 1 }) }), el('span', { text: q.prompt })]),
+      ]);
+      q.options.forEach(function (opt, j) {
+        var id = 'q-' + q.id + '-' + j;
+        fs.appendChild(el('label', { class: 'quiz-opt', for: id }, [
+          el('input', { type: 'radio', id: id, name: 'q-' + q.id, value: String(j) }),
+          el('span', { class: 'quiz-opt-t', text: opt }),
+        ]));
+      });
+      list.appendChild(el('li', null, [fs]));
+    });
+    quizSay('');
+    $('[data-quiz-submit]').hidden = false;
+    $('[data-quiz-submit]').disabled = false;
+    $('[data-quiz-retry]').hidden = true;
+  }
+
+  function quizSay(text, kind) {
+    var msg = $('[data-quiz-msg]');
+    msg.textContent = text || '';
+    msg.hidden = !text;
+    msg.className = 'form-msg' + (text ? ' is-' + (kind || 'error') : '');
+    msg.setAttribute('role', kind === 'error' ? 'alert' : 'status');
+  }
+
+  async function submitQuiz(e) {
+    e.preventDefault();
+    var btn = $('[data-quiz-submit]');
+    if (!quiz || btn.disabled) return;
+    var answers = {}, missing = null, lessonId = quiz.lessonId;
+    quiz.questions.forEach(function (q) {
+      var picked = $('input[name="q-' + q.id + '"]:checked');
+      if (picked) answers[q.id] = Number(picked.value);
+      else if (!missing) missing = q;
+    });
+    if (missing) {
+      quizSay(T.quizAnswerAll, 'error');
+      $('input[name="q-' + missing.id + '"]').focus();
+      return;
+    }
+    btn.disabled = true;
+    btn.setAttribute('aria-busy', 'true');
+    quizSay('');
+    try {
+      var res = await sb.rpc('submit_quiz', { p_lesson_id: lessonId, p_answers: answers });
+      if (res.error) throw res.error;
+      if (!quiz || quiz.lessonId !== lessonId) return; // switched lessons meanwhile
+      showQuizResult(res.data, answers);
+    } catch (err) {
+      console.warn('[academy] quiz submit', err);
+      quizSay(T.quizError, 'error');
+      btn.disabled = false;
+    } finally {
+      btn.removeAttribute('aria-busy');
+    }
+  }
+
+  // Marks the right option of every question and the wrong picks, then offers a retry.
+  function showQuizResult(result, answers) {
+    (result.results || []).forEach(function (r) {
+      var fs = $('[data-q="' + r.id + '"]');
+      if (!fs) return;
+      fs.classList.add(r.correct ? 'is-right' : 'is-wrong');
+      $$('.quiz-opt', fs).forEach(function (label, j) {
+        var input = $('input', label);
+        input.disabled = true;
+        var mark = j === r.correct_index ? 'right' : j === answers[r.id] ? 'wrong' : '';
+        if (!mark) return;
+        label.classList.add('is-' + mark);
+        label.appendChild(el('span', { class: 'quiz-tag', text: T[mark] }));
+      });
+    });
+    var perfect = result.total > 0 && result.score === result.total;
+    quizSay((perfect ? T.quizPerfect + ' ' : '') + fmt(T.quizScore, { s: result.score, t: result.total }), perfect ? 'ok' : 'info');
+    $('[data-quiz-submit]').hidden = true;
+    var retry = $('[data-quiz-retry]');
+    retry.hidden = false;
+    retry.focus();
+  }
+
   function academy() {
     $('[data-complete]').addEventListener('click', markComplete);
+    $('[data-quiz-form]').addEventListener('submit', submitQuiz);
+    $('[data-quiz-retry]').addEventListener('click', function () {
+      drawQuiz();
+      var first = $('[data-quiz-list] input');
+      if (first) first.focus();
+    });
     // Lesson links (sidebar, Previous / Next) switch lessons in place; modified clicks still open a new tab.
     document.addEventListener('click', function (e) {
       var a = e.target.closest('a[data-lesson]');

@@ -1,5 +1,5 @@
-/* RoboSTEAM app pages (dashboard, academy, progress, simulator, profile, settings): route guard, the user card in
-   the shell (js/shell.js), the dashboard greeting, and the profile and settings forms.
+/* RoboSTEAM app pages (dashboard, academy, progress, simulator, profile, settings, admin): route guard, the user card
+   and the admin-only menu links in the shell (js/shell.js), the dashboard greeting, and the profile and settings forms.
    Lessons and progress data live in js/academy.js. Helpers and auth strings come from js/auth.js (window.RSAuth).
    Every user-facing string is in T. */
 (function () {
@@ -148,6 +148,18 @@
     // auth.users for the caller after re-authentication; profiles and lesson_progress go with it (on delete cascade).
   }
 
+  // The "Boshqaruv" menu entries (js/shell.js) are only for admins. This only hides links: admin.html and the
+  // database (supabase/admin-schema.sql) check the role themselves.
+  async function showAdminLinks() {
+    try {
+      var r = await sb.rpc('is_admin');
+      if (r.error) throw r.error;
+      $$('[data-admin-only]').forEach(function (el) { el.hidden = r.data !== true; });
+    } catch (err) {
+      console.warn('[app] is_admin', err); // before admin-schema.sql is run the function doesn't exist yet
+    }
+  }
+
   // ---------- start ----------
   function toLogin() {
     var here = location.pathname.split('/').pop() + location.search;
@@ -164,6 +176,7 @@
     var refill = page === 'profile' ? profilePage() : null;
     if (page === 'settings') settingsPage();
     document.body.removeAttribute('data-guard');
+    showAdminLinks();
 
     try {
       // RLS only lets the user read their own row

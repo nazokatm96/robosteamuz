@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="uz-Latn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- connect-src covers the database, storage uploads and the admin-users Edge Function; media-src the video preview -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; media-src 'self' blob: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co; object-src 'none'; base-uri 'self'; form-action 'self'">
+<meta name="referrer" content="no-referrer">
+<meta name="robots" content="noindex">
+<title>Boshqaruv – RoboSTEAM</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<noscript><style>body[data-guard] main { visibility: visible; }</style></noscript>
+<script defer src="js/config.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.1/dist/umd/supabase.js" integrity="sha384-K1nraABOP/zFehpLIUksXebbs7jMpB8gYMlb+uhVKZcWT/9Vkq1+qhv6ndC+1Yuz" crossorigin="anonymous"></script>
+<script defer src="js/supabase-client.js"></script>
+<script defer src="js/auth.js"></script>
+<script defer src="js/app.js"></script>
+<script defer src="js/survey-questions.js"></script>
+<script defer src="js/admin.js"></script>
+</head>
+<!-- data-guard hides <main> until js/app.js has confirmed a session (otherwise it redirects to login.html).
+     js/admin.js then asks is_admin(); everything here is enforced again by the database (supabase/admin-schema.sql). -->
+<body class="app" data-page="admin" data-guard>
+<script src="js/shell.js"></script>
+
+<main class="app-main" id="main">
+  <div class="page page-wide">
+    <header class="banner is-compact">
+      <div class="banner-text">
+        <p class="banner-kicker">Admin</p>
+        <h1 class="banner-title">Boshqaruv</h1>
+        <p class="banner-sub">Darslar, videolar va testlarni tahrirlang, foydalanuvchilar va so'rovnoma javoblarini ko'ring.</p>
+      </div>
+      <div class="banner-art">
+        <picture>
+          <source type="image/webp" srcset="public/images/sozlamalar-mascot-240.webp 240w, public/images/sozlamalar-mascot-480.webp 480w" sizes="(min-width: 1024px) 150px, (min-width: 640px) 115px, 94px">
+          <img src="public/images/sozlamalar-mascot.png" width="480" height="465" alt="Qo'lida kalit tutib turgan RoboSTEAM roboti" loading="lazy" decoding="async">
+        </picture>
+      </div>
+    </header>
+
+    <noscript><p class="form-msg is-error">Bu sahifa uchun JavaScript yoqilgan bo'lishi kerak.</p></noscript>
+    <p class="acad-state" data-view="loading" role="status">Yuklanmoqda…</p>
+    <div class="acad-state" data-view="denied" hidden>
+      <h2 class="acad-title">Bu sahifa faqat adminlar uchun</h2>
+      <p>Hisobingizda admin huquqi yo'q. Kerak bo'lsa, loyiha egasiga murojaat qiling.</p>
+      <a class="btn" href="dashboard.html">Bosh sahifaga</a>
+    </div>
+    <div class="acad-state" data-view="error" hidden>
+      <p class="form-msg is-error" role="alert">Ma'lumotlarni yuklab bo'lmadi. Internet aloqasini tekshiring va qayta urinib ko'ring.</p>
+      <button class="btn" type="button" data-retry>Qayta urinish</button>
+    </div>
+
+    <div class="adm" data-view="ready" hidden>
+      <div class="adm-tabs" role="tablist" aria-label="Boshqaruv bo'limlari">
+        <button class="adm-tab" type="button" role="tab" id="tab-content" aria-controls="panel-content" aria-selected="true" data-tab="content">Darslar</button>
+        <button class="adm-tab" type="button" role="tab" id="tab-users" aria-controls="panel-users" aria-selected="false" tabindex="-1" data-tab="users">Foydalanuvchilar</button>
+        <button class="adm-tab" type="button" role="tab" id="tab-survey" aria-controls="panel-survey" aria-selected="false" tabindex="-1" data-tab="survey">So'rovnoma</button>
+      </div>
+
+      <section class="adm-panel" role="tabpanel" id="panel-content" aria-labelledby="tab-content" data-panel="content">
+        <div class="adm-bar">
+          <p class="adm-note">Tartibni ↑ ↓ tugmalari bilan o'zgartiring. Qoralamalarni o'quvchilar ko'rmaydi.</p>
+          <button class="btn blue sm" type="button" data-add-module>+ Modul qo'shish</button>
+        </div>
+        <p class="form-msg" data-content-msg hidden></p>
+        <ol class="adm-mods" data-mods></ol>
+      </section>
+
+      <section class="adm-panel" role="tabpanel" id="panel-users" aria-labelledby="tab-users" data-panel="users" hidden>
+        <div class="adm-bar">
+          <div class="field adm-grow">
+            <label for="user-search">Qidirish</label>
+            <input id="user-search" type="search" placeholder="Ism yoki email" autocomplete="off" spellcheck="false">
+          </div>
+          <button class="btn ghost sm" type="button" data-reload="users">Yangilash</button>
+        </div>
+        <p class="adm-count" data-users-count role="status"></p>
+        <p class="form-msg" data-users-msg hidden></p>
+        <div class="adm-table-wrap">
+          <table class="adm-table">
+            <thead>
+              <tr>
+                <th scope="col">Ism</th>
+                <th scope="col">Email</th>
+                <th scope="col">Daraja</th>
+                <th scope="col">Ro'yxatdan o'tgan</th>
+                <th scope="col">Oxirgi kirish</th>
+                <th scope="col">Darslar</th>
+                <th scope="col"><span class="sr-only">Amallar</span></th>
+              </tr>
+            </thead>
+            <tbody data-users></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="adm-panel" role="tabpanel" id="panel-survey" aria-labelledby="tab-survey" data-panel="survey" hidden>
+        <div class="adm-bar">
+          <div class="field">
+            <label for="survey-role">Kimlar</label>
+            <select id="survey-role">
+              <option value="">Hammasi</option>
+              <option value="student">O'quvchilar</option>
+              <option value="teacher">O'qituvchilar</option>
+            </select>
+          </div>
+          <span class="adm-grow"></span>
+          <button class="btn ghost sm" type="button" data-reload="survey">Yangilash</button>
+          <button class="btn sm" type="button" data-csv>CSV yuklab olish</button>
+        </div>
+        <p class="adm-count" data-survey-count role="status"></p>
+        <p class="form-msg" data-survey-msg hidden></p>
+        <ol class="adm-survey" data-survey></ol>
+      </section>
+    </div>
+  </div>
+</main>
+
+<!-- Module editor -->
+<dialog class="adm-dialog" id="module-dialog" aria-labelledby="module-dialog-h">
+  <form class="adm-form" data-module-form novalidate>
+    <div class="adm-dialog-head">
+      <h2 id="module-dialog-h" data-module-h>Yangi modul</h2>
+      <button class="icon-btn" type="button" data-close aria-label="Yopish"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg></button>
+    </div>
+    <div class="field">
+      <label for="m-title">Modul nomi</label>
+      <input id="m-title" maxlength="120" required>
+    </div>
+    <div class="field">
+      <label for="m-desc">Qisqa tavsif</label>
+      <textarea id="m-desc" rows="3" maxlength="500"></textarea>
+    </div>
+    <div class="field">
+      <label class="adm-check"><input type="checkbox" id="m-published" aria-describedby="m-published-hint"> O'quvchilarga ochiq</label>
+      <p class="field-hint" id="m-published-hint">Yopiq modul o'quvchilarda «Tez orada» bo'lib ko'rinadi.</p>
+    </div>
+    <p class="form-msg" data-module-msg hidden></p>
+    <div class="adm-dialog-foot">
+      <button class="btn ghost sm is-danger" type="button" data-delete-module>Modulni o'chirish</button>
+      <span class="adm-grow"></span>
+      <button class="btn ghost sm" type="button" data-close>Bekor qilish</button>
+      <button class="btn blue sm" type="submit">Saqlash</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- Lesson editor: text, video (saved immediately) and quiz -->
+<dialog class="adm-dialog is-wide" id="lesson-dialog" aria-labelledby="lesson-dialog-h">
+  <form class="adm-form" data-lesson-form novalidate>
+    <div class="adm-dialog-head">
+      <h2 id="lesson-dialog-h">Darsni tahrirlash</h2>
+      <button class="icon-btn" type="button" data-close aria-label="Yopish"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg></button>
+    </div>
+    <div class="adm-grid">
+      <div class="field">
+        <label for="l-module">Modul</label>
+        <select id="l-module"></select>
+      </div>
+      <div class="field adm-check-field">
+        <label class="adm-check"><input type="checkbox" id="l-published"> O'quvchilarga ochiq</label>
+      </div>
+    </div>
+    <div class="field">
+      <label for="l-title">Dars nomi</label>
+      <input id="l-title" maxlength="160" required>
+    </div>
+    <div class="field">
+      <label for="l-body">Dars matni</label>
+      <textarea id="l-body" rows="8" aria-describedby="l-body-hint"></textarea>
+      <p class="field-hint" id="l-body-hint">Bo'sh qator — yangi xatboshi. «## » bilan boshlangan qator — sarlavha, «- » — ro'yxat, **so'z** — qalin.</p>
+    </div>
+
+    <fieldset class="adm-box">
+      <legend>Video</legend>
+      <p class="adm-video-status" data-video-status></p>
+      <video class="adm-video" data-video-preview controls preload="metadata" playsinline hidden></video>
+      <div class="bar" data-video-bar role="progressbar" aria-label="Video yuklanmoqda" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" hidden><i></i></div>
+      <div class="adm-btns">
+        <label class="btn ghost sm adm-file"><input type="file" accept="video/mp4,video/webm" data-video-file><span data-video-pick>Video tanlash</span></label>
+        <button class="btn ghost sm" type="button" data-video-cancel hidden>Yuklashni bekor qilish</button>
+        <button class="btn ghost sm is-danger" type="button" data-video-remove hidden>Videoni o'chirish</button>
+      </div>
+      <p class="field-hint" data-video-hint></p>
+      <p class="form-msg" data-video-msg hidden></p>
+    </fieldset>
+
+    <fieldset class="adm-box">
+      <legend>Test</legend>
+      <p class="field-hint">Har bir savolga 2–6 ta variant yozing va to'g'ri javobni belgilang. Test «Saqlash» tugmasi bilan saqlanadi.</p>
+      <ol class="adm-quiz" data-quiz-editor></ol>
+      <button class="btn ghost sm" type="button" data-add-question>+ Savol qo'shish</button>
+    </fieldset>
+
+    <p class="form-msg" data-lesson-msg hidden></p>
+    <div class="adm-dialog-foot">
+      <button class="btn ghost sm is-danger" type="button" data-delete-lesson>Darsni o'chirish</button>
+      <span class="adm-grow"></span>
+      <button class="btn ghost sm" type="button" data-close>Yopish</button>
+      <button class="btn blue sm" type="submit">Saqlash</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- Set a user's password (admin-users Edge Function) -->
+<dialog class="adm-dialog" id="password-dialog" aria-labelledby="password-dialog-h">
+  <form class="adm-form" data-password-form novalidate>
+    <div class="adm-dialog-head">
+      <h2 id="password-dialog-h">Parolni o'zgartirish</h2>
+      <button class="icon-btn" type="button" data-close aria-label="Yopish"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg></button>
+    </div>
+    <p data-pw-user></p>
+    <div class="field">
+      <label for="new-pw">Yangi parol</label>
+      <input id="new-pw" type="text" autocomplete="off" spellcheck="false" autocapitalize="off" maxlength="72" aria-describedby="new-pw-hint">
+      <p class="field-hint" id="new-pw-hint">Kamida 8 ta belgi. Saqlashdan oldin parolni nusxalab oling — keyin uni ko'rib bo'lmaydi.</p>
+    </div>
+    <button class="link-btn" type="button" data-gen-pw>Tasodifiy parol yaratish</button>
+    <p class="form-msg" data-password-msg hidden></p>
+    <div class="adm-dialog-foot">
+      <span class="adm-grow"></span>
+      <button class="btn ghost sm" type="button" data-close>Bekor qilish</button>
+      <button class="btn blue sm" type="submit">Parolni saqlash</button>
+    </div>
+  </form>
+</dialog>
+
+</body>
+</html>

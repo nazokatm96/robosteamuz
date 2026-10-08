@@ -1,5 +1,6 @@
 -- RoboSTEAM academy: modules, lessons, per-user progress, and the private lesson-videos bucket.
--- Idempotent: safe to run again. Run AFTER supabase/schema.sql, then run supabase/seed.sql.
+-- Idempotent: safe to run again. Run AFTER supabase/schema.sql, then run supabase/seed.sql and supabase/admin-schema.sql.
+-- This file resets the table grants: after re-running it, run supabase/admin-schema.sql again (admin editing rights).
 -- Supabase dashboard: SQL Editor -> New query -> paste -> Run.
 
 -- 1. Tables -------------------------------------------------------------------------------------------
@@ -107,7 +108,7 @@ create policy "Progress: update own rows"
   using ((select auth.uid()) = user_id)
   with check ((select auth.uid()) = user_id and exists (select 1 from public.lessons l where l.id = lesson_id));
 
--- No insert/update/delete policies on modules and lessons: content is edited in the dashboard (which bypasses RLS).
+-- Editing modules and lessons (admins only) is set up in supabase/admin-schema.sql.
 -- No delete policy on lesson_progress: rows go away with the user or the lesson (cascade).
 revoke all on public.modules, public.lessons, public.lesson_progress from anon, authenticated;
 grant select on public.modules, public.lessons to authenticated;
@@ -130,27 +131,14 @@ revoke execute on function public.academy_upcoming_modules() from public, anon;
 grant execute on function public.academy_upcoming_modules() to authenticated;
 
 -- 5. Storage: private bucket for lesson videos --------------------------------------------------------
--- Upload files by hand for now: Dashboard -> Storage -> lesson-videos -> Upload file. The object path (e.g.
--- 'elektronika-asoslari/01-kirish.mp4', without the bucket name) goes into lessons.video_path.
+-- Admins upload files from admin.html. The object path (e.g. '<module id>/<lesson id>-1712345678.mp4', without the
+-- bucket name) goes into lessons.video_path; learners get a temporary signed URL for it (getVideoUrl in js/academy.js).
 insert into storage.buckets (id, name, public, allowed_mime_types)
 values ('lesson-videos', 'lesson-videos', false, array['video/mp4', 'video/webm'])
 on conflict (id) do update set public = false, allowed_mime_types = excluded.allowed_mime_types;
 
--- No storage policies yet, so the browser can neither list, read nor upload these files.
---
--- LATER, signed URLs from the client: the browser calls
---     const { data, error } = await sb.storage.from('lesson-videos').createSignedUrl(lesson.video_path, 60 * 60);
---     video.src = data.signedUrl;   // a temporary link, valid for expiresInSeconds
--- (see getVideoUrl / createSignedVideoUrl in js/academy.js). createSignedUrl needs SELECT on storage.objects,
--- so at that point add a policy like this one, which only covers files attached to a lesson the user can see:
---
--- create policy "Lesson videos: signed-in users read published lessons"
---   on storage.objects for select
---   to authenticated
---   using (bucket_id = 'lesson-videos'
---          and exists (select 1 from public.lessons l where l.video_path = storage.objects.name));
---
--- The page CSP already allows it: academy.html has media-src https://*.supabase.co.
+-- The storage policies (admins manage the files; learners may read files of lessons they can see) are in
+-- supabase/admin-schema.sql. The page CSP already allows the videos: academy.html has media-src https://*.supabase.co.
 
 -- 6. Check: every table in public must have RLS on. This should return no rows.
 -- select tablename from pg_tables where schemaname = 'public' and not rowsecurity;

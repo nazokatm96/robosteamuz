@@ -44,7 +44,7 @@
     levels: { beginner: 'Boshlovchi', 'some-electronics': 'Elektronikani biroz biladi', builder: 'Allaqachon narsalar yasaydi' },
   };
 
-  var GUARDED = { dashboard: 1, academy: 1, progress: 1, simulator: 1, profile: 1, settings: 1 }; // signed-in only (js/app.js guards them)
+  var GUARDED = { dashboard: 1, academy: 1, progress: 1, simulator: 1, profile: 1, settings: 1, admin: 1 }; // signed-in only (js/app.js guards them)
   var LEVELS = ['beginner', 'some-electronics', 'builder']; // must match the check constraint in supabase/schema.sql
   var RESEND_COOLDOWN = 60;                                  // seconds; Supabase rate-limits auth emails
   var sb = window.sb || null;

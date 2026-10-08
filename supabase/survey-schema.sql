@@ -2,8 +2,9 @@
 -- Run in the Supabase dashboard: SQL Editor -> New query -> paste -> Run.
 --
 -- Write-only from the website: anon (and signed-in visitors) may INSERT a response, nothing else.
--- Reading, editing and deleting is only possible with the service role (dashboard, a future admin backend),
--- which bypasses RLS. The site must therefore never call .select() on this table, not even after an insert.
+-- Reading, editing and deleting is only possible with the service role (dashboard), which bypasses RLS, and admins
+-- read it through admin_survey_responses() (supabase/admin-schema.sql). The site must therefore never call .select()
+-- on this table, not even after an insert.
 
 -- 1. Table ---------------------------------------------------------------------------------------------
 create table if not exists public.survey_responses (

@@ -1,3 +1,4 @@
 # The compile service runs on Render (render.yaml), not on Vercel: keep it out of the static site
 compile-service
 render.yaml
+migrate

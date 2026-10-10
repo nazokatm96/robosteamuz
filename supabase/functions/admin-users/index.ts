@@ -6,7 +6,7 @@
 // The caller is identified by their own access token (Authorization: Bearer ...) and must be in public.admins
 // (supabase/admin-schema.sql). The service role key is provided by Supabase as an env var and never leaves this function.
 //
-// Deploy (Supabase CLI):  supabase functions deploy admin-users --no-verify-jwt --project-ref sxzkacrtrdlxmgvvxsgv
+// Deploy (Supabase CLI):  supabase functions deploy admin-users --no-verify-jwt --project-ref wrmmmpdintjynwitltot
 // or Dashboard -> Edge Functions -> Deploy a new function -> Via editor: name it admin-users, paste this file, and turn
 // "Verify JWT with legacy secret" off (the function checks the token itself, which also works with the new JWT keys).
 import { createClient } from 'npm:@supabase/supabase-js@2';

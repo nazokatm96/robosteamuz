@@ -7,5 +7,5 @@ window.ROBOSTEAM_CONFIG = {
   // Simulator: where sketches are compiled (the hosted compile-service, e.g. 'https://robosteam-compile.onrender.com').
   // Empty = this site's own /api/compile, i.e. local dev with `cd compile-service && npm start`.
   // On localhost it is ignored (local /api/compile). If you change it, update connect-src in simulator.html's CSP too.
-  COMPILE_URL: 'https://robosteam-compile.onrender.com',
+  COMPILE_URL: 'https://robosteam-compile-94qd.onrender.com',
 };

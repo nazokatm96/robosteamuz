@@ -732,6 +732,57 @@ a.lesson:hover { background: color-mix(in srgb, var(--blue) 10%, transparent); }
 .sim-canvas .rail-strip { fill: #F7F6FF; stroke: #16123F; stroke-width: 2; }
 .sim-canvas .rail-line { stroke: #2F6FD6; stroke-width: 3; stroke-linecap: round; }
 .sim-canvas .rail-label { fill: #2F6FD6; font: 800 18px var(--body); text-anchor: middle; }
+.sim-canvas .part-pin-label { fill: #fff; font: 700 9px var(--body); }
+.sim-canvas .servo-body, .sim-canvas .servo-tab { fill: #2F6FD6; stroke: #16123F; stroke-width: 2.5; }
+.sim-canvas .servo-tab { fill: #2559B0; }
+.sim-canvas .servo-cable { fill: none; stroke-width: 4; stroke-linecap: round; }
+.sim-canvas .servo-cable.is-sig { stroke: #FF8A1F; }
+.sim-canvas .servo-cable.is-v5 { stroke: #E5322B; }
+.sim-canvas .servo-cable.is-gnd { stroke: #7A4A21; }
+.sim-canvas .servo-arc { fill: none; stroke: var(--ink); stroke-width: 2; stroke-dasharray: 4 6; opacity: .35; }
+.sim-canvas .servo-horn { fill: #F7F6FF; stroke: #16123F; stroke-width: 2.5; stroke-linejoin: round; }
+.sim-canvas .servo-hub { fill: #C9CCD6; stroke: #16123F; stroke-width: 2.5; }
+.sim-canvas .servo-hole { fill: #16123F; }
+.sim-canvas .servo-deg { fill: #fff; font: 800 15px var(--body); text-anchor: middle; font-variant-numeric: tabular-nums; }
+.sim-canvas .sonar-pcb { fill: #2FA4E7; stroke: #16123F; stroke-width: 2.5; }
+.sim-canvas .sonar-can { fill: #C9CCD6; stroke: #16123F; stroke-width: 2.5; }
+.sim-canvas .sonar-mesh { fill: #8A8AA0; stroke: #16123F; stroke-width: 1.5; stroke-dasharray: 2 2; }
+.sim-canvas .sonar-waves path { fill: none; stroke: var(--yellow); stroke-width: 4; stroke-linecap: round; opacity: 0; transition: opacity .12s; }
+.sim-canvas .sonar-waves.is-on path { opacity: 1; }
+.sim-canvas .sonar-ruler { stroke: var(--ink); stroke-width: 2; stroke-dasharray: 2 8; stroke-linecap: round; opacity: .4; }
+.sim-canvas .sonar-target { cursor: ew-resize; touch-action: none; }
+.sim-canvas .sonar-target:focus { outline: none; }
+.sim-canvas .sonar-hit { fill: transparent; }
+.sim-canvas .sonar-wall { fill: var(--coral); stroke: #16123F; stroke-width: 2.5; }
+.sim-canvas .sonar-grip { stroke: #16123F; stroke-width: 2; stroke-linecap: round; opacity: .6; }
+.sim-canvas .sonar-target:focus-visible .sonar-wall { stroke: var(--blue); stroke-width: 4; }
+.sim-canvas .sonar-dist { fill: var(--ink); font: 800 14px var(--body); text-anchor: middle; font-variant-numeric: tabular-nums; }
+.sim-canvas .lcd-pcb { fill: #1F8A3A; stroke: #16123F; stroke-width: 2.5; }
+.sim-canvas .lcd-bezel { fill: #16123F; }
+.sim-canvas .lcd-screen { fill: #9BE36B; transition: fill .2s; }
+.sim-canvas .lcd-screen.is-off { fill: #4F6E3A; }
+.sim-canvas .lcd-cell { fill: #16123F; opacity: .06; pointer-events: none; }
+.sim-canvas .lcd-px { fill: #16123F; opacity: .85; }
+.sim-canvas .lcd-char { fill: #16123F; opacity: .9; font: 700 19px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; text-anchor: middle; }
+.sim-canvas .part-pin-label.is-mid { text-anchor: middle; }
+.sim-canvas .ldr-pcb { fill: #2F6FD6; stroke: #16123F; stroke-width: 2.5; }
+.sim-canvas .ldr-glow { fill: var(--yellow); opacity: calc(var(--l, 0) * .7); pointer-events: none; }
+.sim-canvas .ldr-cell { fill: #F2E3C2; stroke: #16123F; stroke-width: 2.5; }
+.sim-canvas .ldr-track { fill: none; stroke: #C0392B; stroke-width: 2; stroke-linejoin: round; }
+.sim-canvas .light-slider { cursor: ew-resize; touch-action: none; }
+.sim-canvas .light-slider:focus { outline: none; }
+.sim-canvas .slider-hit { fill: transparent; }
+.sim-canvas .light-track { stroke: var(--ink); stroke-width: 4; stroke-linecap: round; opacity: .3; }
+.sim-canvas .light-moon { fill: #8A8AA0; }
+.sim-canvas .light-sun { fill: var(--yellow); stroke: #16123F; stroke-width: 1.5; }
+.sim-canvas .light-rays { stroke: var(--yellow); stroke-width: 3; stroke-linecap: round; }
+.sim-canvas .light-knob { fill: var(--yellow); stroke: #16123F; stroke-width: 2.5; }
+.sim-canvas .light-slider:focus-visible .light-knob { stroke: var(--blue); stroke-width: 4; }
+.sim-canvas .slider-label { fill: var(--ink); font: 800 14px var(--body); text-anchor: middle; font-variant-numeric: tabular-nums; }
+.sim-canvas .seg-body { fill: #16123F; stroke: #0B0826; stroke-width: 2.5; }
+.sim-canvas .seg-off, .sim-canvas .seg-on { fill: none; stroke-width: 10; stroke-linecap: round; }
+.sim-canvas .seg-off { stroke: #3A1A24; }
+.sim-canvas .seg-on { stroke: #FF4B3A; opacity: var(--b, 0); filter: drop-shadow(0 0 5px #FF4B3A); }
 .sim-canvas .btn-part:focus { outline: none; }
 .sim-canvas .btn-part:focus-visible .btn-base { stroke: var(--blue); stroke-width: 4; }
 .sim-canvas .pin { cursor: crosshair; }

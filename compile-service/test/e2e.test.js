@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { AVRRunner, PinState } from '../../js/simulator/avr-runner.js';
 import { PROJECTS } from '../../js/simulator/projects.js';
+import { HD44780 } from '../../js/simulator/hd44780.js';
 
 const starter = PROJECTS.find((p) => p.id === 'tugma-led').code;
 
@@ -15,7 +16,8 @@ async function compile(code) {
   const res = await fetch(BASE + '/api/compile', {
     method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ code, board: 'uno' }),
   });
-  return { status: res.status, body: await res.json() };
+  const text = await res.text();
+  try { return { status: res.status, body: JSON.parse(text) }; } catch { return { status: res.status, body: { ok: false, error: text } }; }
 }
 
 /* Run `ms` of simulated time in 1 ms steps; return the times (ms) at which D13 changed level. */
@@ -165,6 +167,75 @@ test('Simon Says: start, repeat the shown colour, level up, wrong colour ends th
   assert.match(serial, /Xato! Natija: 1\r\nYangi o'yin: istalgan tugmani bosing\./);
 });
 
+test('Servo: pin 9 pulses 544 / 1472 / 2400 µs for 0° / 90° / 180°, then sweeps back', async () => {
+  const pulses = [];
+  const { serial } = await runProject('servo', 5200, (r, t) => { pulses.push({ t, us: r.activity(9).pulseUs }); });
+  const at = (ms) => pulses.find((p) => p.t >= ms).us;
+  // Servo.write(a) -> 544 + a * (2400 - 544) / 180 µs; the library trims a few µs for its own interrupt time
+  [[700, 544], [1700, 1472], [2700, 2400]].forEach(([ms, us]) => assert.ok(Math.abs(at(ms) - us) <= 12, `${at(ms)} µs at ${ms} ms, want ${us}`));
+  assert.ok(at(3500) < at(3100) && at(3500) > 600, 'sweeping back towards 0°');
+  assert.match(serial(), /Burchak: 0\r\nBurchak: 90\r\nBurchak: 180\r\n/);
+});
+
+test('Ultratovush masofa: echo pulse -> pulseIn -> distance on Serial, L on when closer than 20 cm', async () => {
+  for (const cm of [10, 30, 150]) {
+    // the HC-SR04 as circuit.js models it: echo HIGH 450 µs after trig falls, for 58.3 µs per cm (sound there and back)
+    const { runner, serial } = await runProject('ultratovush-masofa', 800, null, (r) => {
+      r.pinListeners.push((d, level) => {
+        if (d !== 9 || level) return;
+        r.after(450, () => { r.setInput(10, true); r.after(cm * 58.3, () => r.setInput(10, false)); });
+      });
+    });
+    const m = serial().match(/Masofa: ([\d.]+) sm/);
+    assert.ok(m, serial());
+    assert.ok(Math.abs(+m[1] - cm) <= cm * 0.02 + 0.3, `measured ${m[1]} cm for ${cm} cm`);
+    assert.equal(runner.pinState(13), cm < 20 ? PinState.High : PinState.Low, 'L led at ' + cm + ' cm');
+  }
+});
+
+test('LCD "Salom": LiquidCrystal drives the HD44780 model to show both lines and the custom heart', async () => {
+  const lcd = new HD44780();
+  const high = (r, d) => (r.pinState(d) === PinState.High ? 1 : 0);
+  const { serial } = await runProject('lcd-salom', 2300, null, (r) => {
+    // the circuit's job: latch RS and D4-D7 on every falling edge of E (pin 11)
+    r.pinListeners.push((d, level) => {
+      if (d === 11 && !level) lcd.latch(high(r, 12), high(r, 5) | high(r, 4) << 1 | high(r, 3) << 2 | high(r, 2) << 3);
+    });
+  });
+  const [top, bottom] = lcd.text();
+  assert.equal(top, 'Salom, RoboSTEAM');
+  assert.equal(bottom, 'Vaqt: 2 s \x00     ');
+  assert.deepEqual(lcd.glyph(0), [0b00000, 0b01010, 0b11111, 0b11111, 0b01110, 0b00100, 0b00000, 0b00000]);
+  assert.ok(lcd.twoLines && lcd.displayOn && !lcd.cursorOn);
+  assert.match(serial(), /LCD tayyor/);
+});
+
+test('7-segment hisoblagich: pins 2-8 show 0, 1, 2, 3 a second apart', async () => {
+  const DIGITS = ['1111110', '0110000', '1101101', '1111001', '0110011', '1011011', '1011111', '1110000', '1111111', '1111011'];
+  const shown = [];
+  const { serial } = await runProject('7-segment-hisoblagich', 3600, (r, t) => {
+    const bits = [2, 3, 4, 5, 6, 7, 8].map((d) => (r.pinState(d) === PinState.High ? 1 : 0)).join('');
+    const n = DIGITS.indexOf(bits);
+    if (n >= 0 && (!shown.length || shown[shown.length - 1].n !== n)) shown.push({ n, t });
+  });
+  assert.deepEqual(shown.map((s) => s.n), [0, 1, 2, 3]);
+  assert.ok(Math.abs(shown[2].t - shown[1].t - 1000) < 40, 'one digit per second');
+  assert.match(serial(), /Raqam: 0\r\nRaqam: 1\r\nRaqam: 2/);
+});
+
+test('Tungi chiroq: dark on A0 -> LED on pin 9 dims with the light, bright room -> LED off', async () => {
+  // the light sensor module puts light × 5 V on A0
+  for (const [light, wantDuty] of [[0.1, 190 / 255], [0.05, 223 / 255], [0.7, 0]]) {
+    let duty = -1;
+    const { serial } = await runProject('tungi-chiroq', 700, (r) => { duty = r.activity(9).duty; }, (r) => r.setAnalog(0, light * 5));
+    const m = serial().match(/Yorug'lik: (\d+)\s+(.+)\r\n/);
+    assert.ok(m, serial());
+    assert.ok(Math.abs(+m[1] - light * 1023) <= 1, `A0 reads ${m[1]} at light ${light}`);
+    assert.equal(m[2], light < 0.39 ? "qorong'i, chiroq yondi" : "yorug'");
+    assert.ok(Math.abs(duty - wantDuty) < 0.03, `pin 9 duty ${duty}, want ${wantDuty.toFixed(2)} at light ${light}`);
+  }
+});
+
 test('compile error is returned with the line number', async () => {
   const { status, body } = await compile('void setup() {\n  pinMode(13, OUTPUT)\n}\nvoid loop() {}\n');
   assert.equal(status, 400);
@@ -202,6 +273,7 @@ test('sketches cannot read server files', async () => {
   ];
   for (const [code, line] of cases) {
     const { status, body } = await compile(code);
+    if (status === 403 && /<html/i.test(body.error)) continue; // hosted: the host's firewall (Cloudflare) blocked it first
     assert.equal(status, 400, code);
     assert.match(body.error, new RegExp('^sketch\\.ino:' + line + ':1: error: include not allowed'), code);
   }

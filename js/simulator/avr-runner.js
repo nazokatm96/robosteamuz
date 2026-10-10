@@ -6,7 +6,9 @@
    The page redraws ~60 times a second, far too slowly to see a 490 Hz PWM signal or a 440 Hz tone by sampling
    pin levels, so every pin change is recorded with its CPU cycle and sample() turns each frame into
    { duty, freq } per pin: duty = share of the frame the pin was HIGH (LED brightness), freq = its switching
-   frequency (buzzer pitch). */
+   frequency (buzzer pitch), pulseUs = length of its last HIGH pulse (servo position).
+   Parts that must answer within microseconds (the ultrasonic sensor's echo, the LCD latching data on its E pin)
+   listen to output edges in CPU time through pinListeners and schedule their reply with after(). */
 import {
   CPU, avrInstruction, AVRTimer, timer0Config, timer1Config, timer2Config,
   AVRIOPort, portBConfig, portCConfig, portDConfig, AVRUSART, usart0Config, AVRADC, adcConfig, PinState,
@@ -57,7 +59,8 @@ export class AVRRunner {
     this.external = new Map(); // digital pin -> level forced by the circuit (absent = floating)
     this.applied = new Map();  // digital pin -> level last fed into the PIN register
     // Per-pin activity for sample(): current level, cycles spent HIGH, rising edges and their spacing.
-    this.act = Array.from({ length: PIN_COUNT }, () => ({ level: 0, since: 0, high: 0, lastRise: -1, lastPeriod: 0, periodSum: 0, periods: 0, duty: 0, freq: 0 }));
+    this.act = Array.from({ length: PIN_COUNT }, () => ({ level: 0, since: 0, high: 0, lastRise: -1, lastPeriod: 0, periodSum: 0, periods: 0, duty: 0, freq: 0, pulse: 0, pulseUs: 0 }));
+    this.pinListeners = []; // fn(digital pin, level, cpu cycle) on every output edge
     this.windowStart = 0;
     this.watch(this.ports.D, 0);
     this.watch(this.ports.B, 8);
@@ -94,8 +97,12 @@ export class AVRRunner {
       if (p > 0 && p <= MAX_PERIOD) { a.periodSum += p; a.periods++; a.lastPeriod = p; }
       else a.lastPeriod = 0; // first rise after a pause
       a.lastRise = t;
-    }
+    } else if (a.lastRise >= 0) a.pulse = t - a.lastRise;
+    for (const fn of this.pinListeners) fn(d, level, t);
   }
+
+  /* Run fn after `us` microseconds of simulated time (exactly, between two instructions). */
+  after(us, fn) { this.cpu.addClockEvent(fn, Math.max(1, Math.round(us * (CLOCK_HZ / 1e6)))); }
 
   /* Close the current measuring window (normally once per frame) and update every pin's duty and freq. */
   sample() {
@@ -106,13 +113,15 @@ export class AVRRunner {
       a.duty = span > 0 ? a.high / span : a.level;
       if (a.periods) a.freq = CLOCK_HZ / (a.periodSum / a.periods);
       if (!a.lastPeriod || t - a.lastRise > Math.max(1.5 * a.lastPeriod, MIN_HOLD)) a.freq = 0;
+      a.pulseUs = a.pulse && t - a.lastRise < 2 * MAX_PERIOD ? a.pulse / (CLOCK_HZ / 1e6) : 0; // pulses stopped: 0
       a.high = 0; a.periodSum = 0; a.periods = 0;
     }
     this.windowStart = t;
   }
 
-  /* { duty: 0..1, freq: Hz } of an output pin over the last sample() window. */
-  activity(d) { const a = this.act[d]; return { duty: a.duty, freq: a.freq }; }
+  /* { duty: 0..1, freq: Hz, pulseUs: last HIGH pulse in µs, 0 = none lately } of an output pin over the last
+     sample() window. */
+  activity(d) { const a = this.act[d]; return { duty: a.duty, freq: a.freq, pulseUs: a.pulseUs }; }
 
   /* Voltage (0..5 V) the circuit puts on analog input A<ch>. */
   setAnalog(ch, volts) { this.adc.channelValues[ch] = volts; }

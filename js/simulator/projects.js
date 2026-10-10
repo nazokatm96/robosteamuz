@@ -1,6 +1,7 @@
 /* Simulator projects: the gallery and each project's circuit and code come from this array.
    Adding a project = one entry here. A ready project needs `parts` (types from circuit.js, placed in the 660x380
-   canvas: resistor [rot: 90 stands it up], led [color: red | yellow | green], button, pot [value 0..1], buzzer),
+   canvas: resistor [rot: 90 stands it up], led [color: red | yellow | green | blue], button, pot [value 0..1], buzzer,
+   rail, servo, sonar [value: obstacle distance in cm], lcd (16x2), seg7 (common cathode), ldr [value: light 0..1]),
    default `wires` (pin ids "<part id>.<pin>" or "uno.<pin>", e.g. "uno.a0", "uno.gnd3") and `code`.
    Leave `ready: false` until then: the card is shown dimmed with "Tez orada". */
 
@@ -16,12 +17,6 @@ const uno = () =>
   '<rect x="64" y="104" width="36" height="8" rx="2" fill="' + NAVY + '"/>' +
   '<rect x="60" y="74" width="54" height="18" rx="3" fill="' + NAVY + '"/>' +
   '<text x="28" y="66" class="t-brand">UNO</text>';
-const esp32 = () =>
-  '<rect x="30" y="18" width="78" height="106" rx="7" fill="#16123F" stroke="#3D3BFF" stroke-width="2.5"/>' +
-  '<rect x="42" y="44" width="54" height="46" rx="3" fill="#C9CCD6"/>' +
-  '<path d="M46 26h8v8h8v-8h8v8h8v-8h8" fill="none" stroke="#FFD23F" stroke-width="2.5"/>' +
-  '<text x="69" y="72" class="t-chip">ESP32</text>' +
-  [26, 112].map((x) => [36, 50, 64, 78, 92, 106].map((y) => '<rect x="' + (x - 3) + '" y="' + y + '" width="6" height="6" rx="1" fill="#C9CCD6"/>').join('')).join('');
 const wire = (d, color) => '<path d="' + d + '" fill="none" stroke="' + color + '" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>';
 const led = (x, y, color, on) =>
   (on ? '<circle cx="' + x + '" cy="' + y + '" r="20" fill="' + color + '" opacity=".35"/>' : '') +
@@ -278,6 +273,205 @@ void loop() {
 }
 `;
 
+const SERVO_CODE = `// RoboSTEAM: servo motor
+// Servo simlari: jigarrang -> GND, qizil -> 5V, to'q sariq (signal) -> 9-pin
+// Servo kutubxonasi signal simiga sekundiga 50 marta impuls yuboradi:
+// impuls uzunligi (0,5 ... 2,4 ms) servo qaysi burchakka burilishini belgilaydi.
+
+#include <Servo.h>
+
+Servo servo;
+const int SERVO_PIN = 9;
+
+void burish(int burchak) {
+  servo.write(burchak);          // 0 ... 180 daraja
+  Serial.print("Burchak: ");
+  Serial.println(burchak);
+}
+
+void setup() {
+  servo.attach(SERVO_PIN);
+  Serial.begin(9600);
+}
+
+void loop() {
+  burish(0);
+  delay(1000);
+  burish(90);
+  delay(1000);
+  burish(180);
+  delay(1000);
+
+  // endi 180 dan 0 gacha asta-sekin, 10 darajadan qaytamiz
+  for (int burchak = 180; burchak >= 0; burchak -= 10) {
+    servo.write(burchak);
+    delay(100);
+  }
+  Serial.println("Qaytdi!");
+  delay(1000);
+}
+`;
+
+const SONAR_CODE = `// RoboSTEAM: HC-SR04 ultratovush datchigi bilan masofa o'lchash
+// Datchik: VCC -> 5V, Trig -> 9-pin, Echo -> 10-pin, GND -> GND
+// Trig'ga 10 mikrosoniyalik impuls beramiz: datchik ultratovush chiqaradi.
+// Echo ovoz to'siqqa borib, qaytib kelguncha HIGH bo'lib turadi.
+// To'siqni sichqoncha bilan suring: masofa o'zgaradi.
+
+const int TRIG = 9;
+const int ECHO = 10;
+const int LED = 13;   // platadagi "L" chirog'i: to'siq 20 sm dan yaqin bo'lsa yonadi
+
+void setup() {
+  pinMode(TRIG, OUTPUT);
+  pinMode(ECHO, INPUT);
+  pinMode(LED, OUTPUT);
+  Serial.begin(9600);
+}
+
+void loop() {
+  digitalWrite(TRIG, LOW);
+  delayMicroseconds(2);
+  digitalWrite(TRIG, HIGH);       // 10 µs impuls
+  delayMicroseconds(10);
+  digitalWrite(TRIG, LOW);
+
+  long vaqt = pulseIn(ECHO, HIGH);   // Echo necha mikrosoniya HIGH bo'ldi
+  // Tovush 1 µs da 0,034 sm yuradi; u borib-qaytadi, shuning uchun 2 ga bo'lamiz
+  float masofa = vaqt * 0.034 / 2;
+
+  Serial.print("Masofa: ");
+  Serial.print(masofa);
+  Serial.println(" sm");
+
+  digitalWrite(LED, masofa < 20 ? HIGH : LOW);
+  delay(300);
+}
+`;
+
+const LCD_CODE = `// RoboSTEAM: LCD 16x2 ekranga matn chiqarish
+// LCD: RS -> 12, E -> 11, D4 -> 5, D5 -> 4, D6 -> 3, D7 -> 2, VCC -> 5V, GND -> GND
+// Haqiqiy LCD'da yana RW -> GND, V0 -> potentsiometr (kontrast), A/K -> yoritish ulanadi;
+// simulyatordagi modulda ular ichkarida ulangan.
+
+#include <LiquidCrystal.h>
+
+LiquidCrystal lcd(12, 11, 5, 4, 3, 2);   // RS, E, D4, D5, D6, D7
+
+// O'zimiz chizgan belgi: yurakcha (8 qator, har birida 5 nuqta)
+byte yurak[8] = {
+  B00000,
+  B01010,
+  B11111,
+  B11111,
+  B01110,
+  B00100,
+  B00000,
+  B00000,
+};
+
+void setup() {
+  lcd.begin(16, 2);            // 16 ustun, 2 qator
+  lcd.createChar(0, yurak);    // belgini LCD xotirasiga yozadi...
+  lcd.setCursor(0, 0);         // ...shuning uchun keyin ekranning boshiga qaytamiz
+  lcd.print("Salom, RoboSTEAM");
+  Serial.begin(9600);
+  Serial.println("LCD tayyor");
+}
+
+void loop() {
+  lcd.setCursor(0, 1);         // 1-ustun, 2-qator (sanash 0 dan boshlanadi)
+  lcd.print("Vaqt: ");
+  lcd.print(millis() / 1000);
+  lcd.print(" s ");
+  lcd.write(byte(0));          // yurakcha
+  delay(500);
+}
+`;
+
+const SEG7_CODE = `// RoboSTEAM: 7-segmentli displeyda 0 dan 9 gacha sanash
+// Displey (umumiy katod): a -> 2, b -> 3, c -> 4, d -> 5, e -> 6, f -> 7, g -> 8
+// Umumiy oyoq (COM) -> 220 Ω rezistor -> GND
+// (Haqiqiy loyihada har bir segmentga alohida rezistor qo'yilsa, hamma raqam bir xil yorqin bo'ladi.)
+//
+//    aaa
+//   f   b
+//    ggg
+//   e   c
+//    ddd
+
+const int SEGMENTLAR[7] = {2, 3, 4, 5, 6, 7, 8};   // a, b, c, d, e, f, g
+
+// Har bir raqamda qaysi segment yonadi (1 = yoniq). Tartib: a b c d e f g
+const byte RAQAMLAR[10][7] = {
+  {1, 1, 1, 1, 1, 1, 0},   // 0
+  {0, 1, 1, 0, 0, 0, 0},   // 1
+  {1, 1, 0, 1, 1, 0, 1},   // 2
+  {1, 1, 1, 1, 0, 0, 1},   // 3
+  {0, 1, 1, 0, 0, 1, 1},   // 4
+  {1, 0, 1, 1, 0, 1, 1},   // 5
+  {1, 0, 1, 1, 1, 1, 1},   // 6
+  {1, 1, 1, 0, 0, 0, 0},   // 7
+  {1, 1, 1, 1, 1, 1, 1},   // 8
+  {1, 1, 1, 1, 0, 1, 1},   // 9
+};
+
+void raqamKorsat(int n) {
+  for (int i = 0; i < 7; i++) {
+    digitalWrite(SEGMENTLAR[i], RAQAMLAR[n][i]);
+  }
+}
+
+void setup() {
+  for (int i = 0; i < 7; i++) {
+    pinMode(SEGMENTLAR[i], OUTPUT);
+  }
+  Serial.begin(9600);
+}
+
+void loop() {
+  for (int n = 0; n <= 9; n++) {
+    raqamKorsat(n);
+    Serial.print("Raqam: ");
+    Serial.println(n);
+    delay(1000);
+  }
+}
+`;
+
+const NIGHT_LIGHT_CODE = `// RoboSTEAM: tungi chiroq — qorong'i tushsa o'zi yonadi
+// Yorug'lik datchigi (fotorezistor moduli): VCC -> 5V, GND -> GND, AO -> A0
+//   xona qancha yorug' bo'lsa, A0 dagi qiymat shuncha katta (0 ... 1023)
+// LED: 9-pin -> rezistor -> LED (+) ... LED (-) -> GND
+// Datchik tepasidagi surgichni oy tomonga suring: xona qorong'ilashadi.
+
+const int DATCHIK = A0;
+const int LED = 9;            // ~ pin: analogWrite() bilan yorqinlikni boshqaramiz
+const int CHEGARA = 400;      // A0 shundan kam bo'lsa, "qorong'i" deymiz
+
+void setup() {
+  pinMode(LED, OUTPUT);
+  Serial.begin(9600);
+}
+
+void loop() {
+  int yoruglik = analogRead(DATCHIK);
+
+  if (yoruglik < CHEGARA) {
+    // qancha qorong'i bo'lsa, chiroq shuncha yorug' yonadi
+    int yorqinlik = map(yoruglik, 0, CHEGARA, 255, 0);
+    analogWrite(LED, yorqinlik);
+  } else {
+    analogWrite(LED, 0);      // yorug': chiroq kerak emas
+  }
+
+  Serial.print("Yorug'lik: ");
+  Serial.print(yoruglik);
+  Serial.println(yoruglik < CHEGARA ? "  qorong'i, chiroq yondi" : "  yorug'");
+  delay(300);
+}
+`;
+
 // ---------- the list (gallery order) ----------
 export const PROJECTS = [
   {
@@ -355,31 +549,52 @@ export const PROJECTS = [
     code: MELODY_CODE,
   },
   {
-    id: 'servo', title: 'Servo', level: 'intermediate', ready: false,
+    id: 'servo', title: 'Servo', level: 'intermediate', ready: true, board: 'uno',
     description: 'Servo motorni kerakli burchakka burish.',
     thumbnail: svg(uno() + '<rect x="150" y="62" width="76" height="40" rx="5" fill="#3D3BFF" stroke="' + NAVY + '" stroke-width="2"/><circle cx="170" cy="82" r="10" fill="#fff"/>' +
       '<path d="M170 82 L206 44" stroke="#fff" stroke-width="8" stroke-linecap="round"/><path d="M200 26 a44 44 0 0 1 16 30" fill="none" stroke="#FFD23F" stroke-width="2.5" stroke-dasharray="4 4"/>' +
       wire('M105 32 C130 20 140 60 150 72', '#FFB020')),
+    // the servo's cable pins stack signal / 5V / GND, so the three wires fan out without crossing
+    parts: [{ type: 'servo', id: 'sv', x: 540, y: 160 }],
+    wires: [['uno.9', 'sv.sig'], ['uno.5v', 'sv.v5'], ['uno.gnd2', 'sv.gnd']],
+    code: SERVO_CODE,
   },
   {
-    id: 'ultratovush-masofa', title: 'Ultratovush masofa', level: 'intermediate', ready: false,
+    id: 'ultratovush-masofa', title: 'Ultratovush masofa', level: 'intermediate', ready: true, board: 'uno',
     description: "HC-SR04 datchigi bilan masofani o'lchash.",
     thumbnail: svg(uno() + '<rect x="142" y="58" width="88" height="40" rx="5" fill="#2FA4E7" stroke="' + NAVY + '" stroke-width="2"/>' +
       '<circle cx="164" cy="78" r="15" fill="#C9CCD6" stroke="' + NAVY + '" stroke-width="2"/><circle cx="208" cy="78" r="15" fill="#C9CCD6" stroke="' + NAVY + '" stroke-width="2"/>' +
       '<path d="M170 44 a26 26 0 0 1 32 0 M162 32 a40 40 0 0 1 48 0" fill="none" stroke="#FFD23F" stroke-width="2.5" stroke-linecap="round"/>' + wire('M84 32 C100 10 130 30 150 58', '#1FBF8F')),
+    // the sensor faces right; the obstacle in front of it is dragged to set the distance (value, cm)
+    parts: [{ type: 'sonar', id: 'us', x: 460, y: 160, value: 30 }],
+    wires: [['uno.9', 'us.trig'], ['uno.10', 'us.echo'], ['uno.5v', 'us.vcc'], ['uno.gnd3', 'us.gnd']],
+    code: SONAR_CODE,
   },
   {
-    id: 'lcd-salom', title: 'LCD "Salom"', level: 'intermediate', ready: false,
+    id: 'lcd-salom', title: 'LCD "Salom"', level: 'intermediate', ready: true, board: 'uno',
     description: '16x2 ekranga matn chiqarish.',
     thumbnail: svg(uno() + '<rect x="138" y="44" width="94" height="52" rx="5" fill="#1F8A3A" stroke="' + NAVY + '" stroke-width="2"/><rect x="146" y="52" width="78" height="36" rx="2" fill="#9BE36B"/>' +
       '<text x="185" y="76" class="t-lcd">Salom</text>' + wire('M112 32 C130 10 150 20 160 44', '#B455E0')),
+    // module pins down its left edge, D7 at the top, so the six data wires fan out without crossing
+    parts: [{ type: 'lcd', id: 'lcd', x: 405, y: 70 }],
+    wires: [['uno.12', 'lcd.rs'], ['uno.11', 'lcd.e'], ['uno.5', 'lcd.d4'], ['uno.4', 'lcd.d5'], ['uno.3', 'lcd.d6'], ['uno.2', 'lcd.d7'],
+      ['uno.5v', 'lcd.vcc'], ['uno.gnd2', 'lcd.gnd']],
+    code: LCD_CODE,
   },
   {
-    id: '7-segment-hisoblagich', title: '7-segment hisoblagich', level: 'intermediate', ready: false,
+    id: '7-segment-hisoblagich', title: '7-segment hisoblagich', level: 'intermediate', ready: true, board: 'uno',
     description: '0 dan 9 gacha sanaydigan raqamli displey.',
     thumbnail: svg(uno() + '<rect x="156" y="26" width="60" height="88" rx="6" fill="#16123F" stroke="#C9CCD6" stroke-width="2"/>' +
       '<path d="M172 40h28M202 44v24M202 74v24M172 102h28M170 74v24M170 44v24M174 71h24" stroke="#FF4B3A" stroke-width="6" stroke-linecap="round"/>' +
       '<path d="M170 74v24M170 44v24" stroke="#4A1A1A" stroke-width="6" stroke-linecap="round"/>' + wire('M77 32 C100 10 140 20 156 40', '#FFB020')),
+    // common-cathode display, segment pins a-g down its left edge; COM goes through one resistor to GND
+    parts: [
+      { type: 'seg7', id: 'disp', x: 490, y: 70 },
+      { type: 'resistor', id: 'r', x: 400, y: 330 },
+    ],
+    wires: [['uno.2', 'disp.a'], ['uno.3', 'disp.b'], ['uno.4', 'disp.c'], ['uno.5', 'disp.d'], ['uno.6', 'disp.e'], ['uno.7', 'disp.f'], ['uno.8', 'disp.g'],
+      ['disp.com', 'r.2'], ['r.1', 'uno.gnd3']],
+    code: SEG7_CODE,
   },
   {
     id: 'simon-says', title: 'Simon Says', level: 'intermediate', ready: true, board: 'uno',
@@ -418,10 +633,21 @@ export const PROJECTS = [
     code: SIMON_CODE,
   },
   {
-    id: 'esp32-wifi-scan', title: 'ESP32 WiFi scan', level: 'intermediate', ready: false, board: 'esp32',
-    description: 'Atrofdagi WiFi tarmoqlarini topish.',
-    thumbnail: svg(esp32() + '<circle cx="182" cy="96" r="7" fill="#FFD23F"/>' +
-      '<path d="M162 76 a28 28 0 0 1 40 0 M150 62 a46 46 0 0 1 64 0 M138 48 a64 64 0 0 1 88 0" fill="none" stroke="#FFD23F" stroke-width="6" stroke-linecap="round"/>'),
+    id: 'tungi-chiroq', title: 'Tungi chiroq', level: 'intermediate', ready: true, board: 'uno',
+    description: "Qorong'i tushsa o'zi yonadigan chiroq: yorug'lik datchigi.",
+    thumbnail: svg(uno() + '<path d="M214 22a16 16 0 1 0 14 24a13 13 0 1 1 -14 -24z" fill="#C9CCD6"/>' +
+      '<rect x="142" y="78" width="56" height="40" rx="5" fill="#2F6FD6" stroke="' + NAVY + '" stroke-width="2"/><circle cx="170" cy="96" r="12" fill="#F2E3C2" stroke="' + NAVY + '" stroke-width="2"/>' +
+      '<path d="M164 90h12v4h-12v4h12" fill="none" stroke="#C0392B" stroke-width="1.8"/>' + led(176, 34, '#FFD23F', true) + wire('M88 108 C110 130 140 128 150 118', '#1FBF8F')),
+    // taller canvas: the LED circuit as in "Potentsiometr" at the top right, the light sensor and its slider below it
+    canvas: { h: 470 },
+    parts: [
+      { type: 'resistor', id: 'r', x: 420, y: 70 },
+      { type: 'led', id: 'led', color: 'yellow', x: 600, y: 115 },
+      { type: 'ldr', id: 'ldr', x: 520, y: 360, value: 0.7 },
+    ],
+    wires: [['uno.9', 'r.1'], ['r.2', 'led.a'], ['led.k', 'uno.gnd2'],
+      ['ldr.vcc', 'uno.5v'], ['ldr.gnd', 'uno.gnd3'], ['ldr.ao', 'uno.a0']],
+    code: NIGHT_LIGHT_CODE,
   },
 ];
 
